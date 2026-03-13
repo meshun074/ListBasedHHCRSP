@@ -1,4 +1,4 @@
-package org.example;
+package org.example.GA;
 
 import org.example.Data.Caregiver;
 import org.example.Data.InstancesClass;

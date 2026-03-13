@@ -1,4 +1,4 @@
-package org.example.GA;
+package org.example;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 

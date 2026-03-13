@@ -1,7 +1,7 @@
-package org.example;
+package org.example.GA;
 
-import org.example.BCRCBRKGA.RKChromosome;
 import org.example.Data.InstancesClass;
+import org.example.Main;
 
 import java.util.ArrayList;
 import java.util.Arrays;

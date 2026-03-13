@@ -1,4 +1,4 @@
-package org.example.GA;
+package org.example;
 
 public class Configuration {
     private final String instance;

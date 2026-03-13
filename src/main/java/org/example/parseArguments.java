@@ -1,4 +1,4 @@
-package org.example.GA;
+package org.example;
 
 public class parseArguments {
     public static Configuration getConfiguration(String[] args) {

@@ -1,12 +1,15 @@
-package org.example;
+package org.example.GA;
 
 import org.example.Data.Patient;
+import org.example.Main;
 
+import java.util.Arrays;
 import java.util.List;
 
 public class EvaluationFunction {
     private static final Patient[] allPatients = Main.instance.getPatients();
     private static final double[][] distancesMatrix = Main.instance.getDistances();
+    private static final int allCaregiverNum = Main.instance.getCaregivers().length;
     public static void EvaluateFitness(List<Chromosome> population) {
         for (Chromosome ch : population) {
             EvaluateFitness(ch);
@@ -65,7 +68,6 @@ public class EvaluationFunction {
         }
         updateFitness(ch);
     }
-
     private static void updateRoutes(Chromosome ch, Shift[] caregiverRoute, CaregiverPair cp, Patient p, int index) {
         Shift c1 = caregiverRoute[cp.getFirst()];
         int currentLocation1 = c1.getRoute().isEmpty() ? 0: c1.getRoute().get(c1.getRoute().size()-1) + 1;
@@ -122,6 +124,83 @@ public class EvaluationFunction {
             c1.updateTardiness(tardiness);
             c1.updateTravelCost(travelCost);
             c1.updateRoute(index);
+        }
+    }
+
+    public static void CrossEvaluationNew(Chromosome ch, double bestFitness) {
+        int[] routeEndPoint = new int[allCaregiverNum];
+        double[] routesCurrentTime = new double[allCaregiverNum];
+        Arrays.fill(routeEndPoint,-1);
+        List<Integer> genes  = ch.getGenes();
+        CaregiverPair[] caregivers = ch.getCaregivers();
+        ch.setTotalTravelCost(0.0);
+        ch.setFitness(0.0);
+        ch.setHighestTardiness(0.0);
+        ch.setTotalTardiness(0.0);
+        for (int i = 0; i < genes.size(); i++) {
+            Patient p = allPatients[genes.get(i)];
+            CaregiverPair cp = caregivers[genes.get(i)];
+            updateRoutes(ch, routeEndPoint, routesCurrentTime, cp, p, genes.get(i));
+            updateFitness(ch);
+            if(ch.getFitness() > bestFitness){
+                return;
+            }
+        }
+        for (int c : routeEndPoint) {
+            double distance = distancesMatrix[c+1][0];
+            ch.updateTotalTravelCost(distance);
+        }
+        updateFitness(ch);
+    }
+
+    private static void updateRoutes(Chromosome ch, int[] routeEndPoint, double[] routesCurrentTime, CaregiverPair cp, Patient p, int index) {
+        int c1 = cp.getFirst();
+        int currentLocation1 = routeEndPoint[c1]==-1 ? 0: routeEndPoint[c1] + 1;
+        int nextLocation = index + 1;
+        double arrivalTime1 = routesCurrentTime[c1] + distancesMatrix[currentLocation1][nextLocation];
+        double startTime1 = Math.max(arrivalTime1,p.getTime_window()[0]);
+
+        if(p.getRequired_caregivers().length>1){
+            int c2 = cp.getSecond();
+            int currentLocation2 = routeEndPoint[c2]==-1 ? 0: routeEndPoint[c2] + 1;
+            double arrivalTime2 = routesCurrentTime[c2] + distancesMatrix[currentLocation2][nextLocation];
+            double startTime2 = Math.max(arrivalTime2,p.getTime_window()[0]);
+            if(p.getSynchronization().getType().equals("simultaneous")){
+                double startTime = Math.max(startTime1,startTime2);
+                double tardiness = startTime - p.getTime_window()[1];
+                tardiness = 2 * Math.max(tardiness,0);
+                double highestTardiness = Math.max(tardiness/2,ch.getHighestTardiness());
+                ch.setHighestTardiness(highestTardiness);
+                ch.updateTotalTardiness(tardiness);
+                startTime1 = startTime;
+                startTime2 = startTime;
+            }else {
+                startTime2 = Math.max(startTime2, startTime1+p.getSynchronization().getDistance()[0]);
+                if(startTime2 -startTime1>p.getSynchronization().getDistance()[1])
+                    startTime1 = startTime2 - p.getSynchronization().getDistance()[1];
+                double tardiness1 = Math.max(0, startTime1-p.getTime_window()[1]);
+                double tardiness2 = Math.max(0, startTime2-p.getTime_window()[1]);
+                ch.updateTotalTardiness(tardiness1+tardiness2);
+                double maxTardiness = Math.max(tardiness1,tardiness2);
+                maxTardiness = Math.max(maxTardiness,ch.getHighestTardiness());
+                ch.setHighestTardiness(maxTardiness);
+            }
+            routesCurrentTime[c1] = startTime1+p.getRequired_caregivers()[0].getDuration();
+            routesCurrentTime[c2] = startTime2+p.getRequired_caregivers()[1].getDuration();
+            double travelCost = distancesMatrix[currentLocation1][nextLocation] + distancesMatrix[currentLocation2][nextLocation];
+            ch.updateTotalTravelCost(travelCost);
+            routeEndPoint[c1]=index;
+            routeEndPoint[c2]=index;
+        }else {
+            double tardiness = startTime1-p.getTime_window()[1];
+            tardiness = Math.max(0, tardiness);
+            double maxTardiness = Math.max(tardiness,ch.getHighestTardiness());
+            ch.setHighestTardiness(maxTardiness);
+            ch.updateTotalTardiness(tardiness);
+            double travelCost = distancesMatrix[currentLocation1][nextLocation];
+            ch.updateTotalTravelCost(travelCost);
+            routesCurrentTime[c1]=startTime1+p.getRequired_caregivers()[0].getDuration();
+            routeEndPoint[c1] = index;
         }
     }
 

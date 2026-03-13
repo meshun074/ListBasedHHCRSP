@@ -1,4 +1,4 @@
-package org.example;
+package org.example.GA;
 
 public class CaregiverPair {
     private final int first;
